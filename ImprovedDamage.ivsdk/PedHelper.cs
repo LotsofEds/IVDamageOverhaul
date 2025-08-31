@@ -5,6 +5,7 @@ using System.IO;
 using IVSDKDotNet;
 using CCL;
 
+// Credits: ItsClonkAndre
 namespace ImprovedDamage.ivsdk
 {
     internal class PedHelper

@@ -1,17 +1,18 @@
-﻿using System;
-using System.Windows.Forms;
-using System.Collections.Generic;
-using System.IO;
-using System.Numerics;
-using IVSDKDotNet;
-using static IVSDKDotNet.Native.Natives;
-using CCL;
+﻿using CCL;
 using CCL.GTAIV;
+using IVSDKDotNet;
 using IVSDKDotNet.Enums;
 using IVSDKDotNet.Native;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime;
-using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
+using System.Windows.Forms;
+using static IVSDKDotNet.Native.Natives;
 
 namespace ImprovedDamage.ivsdk
 {
@@ -214,7 +215,6 @@ namespace ImprovedDamage.ivsdk
             CleanLists();
             FillLists();
             CheckHealthArmor();
-            //IVGame.ShowSubtitleMessage(pedList.Count.ToString());
         }
         void CleanLists()
         {
@@ -257,23 +257,6 @@ namespace ImprovedDamage.ivsdk
                 armorList.Add(initArmor);
             }
         }
-        /*private void LoadWeaponConfigs(SettingsFile settings, int weap)
-        {
-            weapHeadMult = settings.GetUInteger(weap.ToString(), "PedHeadMult", 100);
-            weapPlyrHeadMult = settings.GetUInteger(weap.ToString(), "PlyrHeadMult", 100);
-
-            weapBodyMult = settings.GetUInteger(weap.ToString(), "PedBodyMult", 100);
-            weapPlyrBodyMult = settings.GetUInteger(weap.ToString(), "PlyrBodyMult", 100);
-            weapArmrMult = settings.GetUInteger(weap.ToString(), "PedArmorMult", 100);
-            weapPlyrArmrMult = settings.GetUInteger(weap.ToString(), "PlyrArmorMult", 100);
-            weapArmrPntMult = settings.GetUInteger(weap.ToString(), "PedArmorPenetMult", 100);
-            weapPlyrArmrPntMult = settings.GetUInteger(weap.ToString(), "PlyrArmorPenetMult", 0);
-
-            weapLimbMult = settings.GetUInteger(weap.ToString(), "PedLimbMult", 100);
-            weapPlyrLimbMult = settings.GetUInteger(weap.ToString(), "PlyrLimbMult", 100);
-            weapHandMult = settings.GetUInteger(weap.ToString(), "PedHandsAndFeetMult", 100);
-            weapPlyrHandMult = settings.GetUInteger(weap.ToString(), "PlyrHandsAndFeetMult", 100);
-        }*/
         private uint GetHeadMult(SettingsFile settings, int weap)
         {
             return (settings.GetUInteger(weap.ToString(), "PedHeadMult", 100));
@@ -390,8 +373,6 @@ namespace ImprovedDamage.ivsdk
             {
                 int pedHandle = myPed;
 
-                //IVGame.ShowSubtitleMessage(initHealth.ToString() + "  " +newHealth.ToString());
-                //bool hasDamaged = (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 57) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 56) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 54));
                 bool hasDamaged = (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 57));
 
                 if (hasDamaged)
@@ -420,13 +401,11 @@ namespace ImprovedDamage.ivsdk
                     uint newHealth;
                     uint newArmor;
 
-                    //IVGame.ShowSubtitleMessage(pedHandle.ToString() + "  " + PlayerHandle.ToString() + "  " + PlayerIndex.ToString());
                     GET_CHAR_HEALTH(pedHandle, out newHealth);
                     GET_CHAR_ARMOUR(pedHandle, out newArmor);
                     GET_CHAR_LAST_DAMAGE_BONE(pedHandle, out Int32 iBone);
                     string boneHit = Values.GetBone(iBone);
 
-                    //IVGame.ShowSubtitleMessage(initHealth.ToString() + "  " + newHealth.ToString() + "  " + initArmor + "  " + newArmor.ToString());
                     if (newHealth > initHealth)
                     {
                         healthList[pedList.IndexOf(myPed)] = newHealth;
@@ -446,7 +425,6 @@ namespace ImprovedDamage.ivsdk
                         if (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, i))
                         {
                             //IVGame.ShowSubtitleMessage(i.ToString());
-                            //LoadWeaponConfigs(Settings, i);
                             weapHeadMult = GetHeadMult(Settings, i);
                             weapPlyrHeadMult = GetPlyrHeadMult(Settings, i);
                             weapHeadArmrMult = GetHeadArmorMult(Settings, i);
