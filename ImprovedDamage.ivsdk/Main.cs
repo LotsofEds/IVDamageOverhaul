@@ -160,6 +160,7 @@ namespace ImprovedDamage.ivsdk
     {
         bool scriptActive = true;
         bool noHeadshots = false;
+        bool buffedFriends = false;
         private static int numOfWeapIDs;
         private static List<int> pedList = new List<int>();
         private static List<uint> healthList = new List<uint>();
@@ -195,6 +196,8 @@ namespace ImprovedDamage.ivsdk
             healthList.Clear();
             armorList.Clear();
             LoadINI(Settings);
+            if (buffedFriends)
+                ArmoredAllies.Init(Settings);
         }
         private void Main_KeyDown(object sender, KeyEventArgs e)
         {
@@ -215,6 +218,9 @@ namespace ImprovedDamage.ivsdk
             CleanLists();
             FillLists();
             CheckHealthArmor();
+
+            if (buffedFriends)
+                ArmoredAllies.Tick();
         }
         void CleanLists()
         {
@@ -249,7 +255,7 @@ namespace ImprovedDamage.ivsdk
                 uint initArmor = 0;
 
                 GET_CHAR_ARMOUR(pedHandle, out initArmor);
-                if (!HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 57) && initArmor <= 0) continue;
+                if (!HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 57) && initArmor <= 0 && !IS_PED_A_MISSION_PED(pedHandle)) continue;
 
                 GET_CHAR_HEALTH(pedHandle, out initHealth);
                 pedList.Add(pedHandle);
@@ -326,6 +332,7 @@ namespace ImprovedDamage.ivsdk
             scriptRange = settings.GetFloat("MAIN", "scriptRange", 120);
             numOfWeapIDs = settings.GetInteger("MAIN", "NumOfWeaponIDs", 60);
             noHeadshots = settings.GetBoolean("MAIN", "NoHeadshots", false);
+            buffedFriends = settings.GetBoolean("MAIN", "BuffAllies", false);
 
             string NotWeap = settings.GetValue("WEAPON TYPES", "Exceptions", "");
             Exceptions.Clear();
@@ -493,9 +500,6 @@ namespace ImprovedDamage.ivsdk
                     uint handArmrDmg = ((armrDmgInit * weapHandMult) / 100);
                     uint plyrHandArmrDmg = ((armrDmgInit * weapPlyrHandMult) / 100);
 
-                    //uint HandDmg = ((armrDmgInit * weapArmrPntMult) / 100);
-                    //uint plyrHandPntDmg = ((armrDmgInit * weapPlyrArmrPntMult) / 100);
-
                     //IVGame.ShowSubtitleMessage(dmgInit.ToString() + "  " + initHealth.ToString() + "  " + newHealth.ToString() + "  " + armrDmgInit.ToString() + "  " + initArmor + "  " + newArmor.ToString());
                     if (!HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 49) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 50) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 53) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 54) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 55) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 56))
                     {
@@ -516,67 +520,6 @@ namespace ImprovedDamage.ivsdk
                         }
                         if (!IS_CHAR_DEAD(pedHandle) && boneHit == "HEAD")
                         {
-                            /*if (weapPlyrHeadMult >= 0)
-                            {
-                                if (pedHandle == PlayerHandle && dmgInit > 1 && newArmor <= 0)
-                                {
-                                    SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrHeadDmg));
-                                }
-                                else if (pedHandle == PlayerHandle && dmgInit <= 1 && newArmor <= 0)
-                                {
-                                    SET_CHAR_HEALTH(pedHandle, (newHealth - plyrInitHeadDmg));
-                                }
-                            }
-                            if (weapHeadMult >= 0)
-                            {
-                                if (pedHandle != PlayerHandle && dmgInit > 1 && newArmor <= 0)
-                                {
-                                    SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - headDmg));
-                                }
-                                else if (pedHandle != PlayerHandle && dmgInit <= 1 && newArmor <= 0)
-                                {
-                                    SET_CHAR_HEALTH(pedHandle, (newHealth - initHeadDmg));
-                                }
-                            }
-                            GET_CHAR_HEALTH(pedHandle, out newHealth);
-
-                            if (weapPlyrHeadMult >= 0)
-                            {
-                                if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - plyrHeadArmrDmg);
-                                }
-                                else if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - plyrHeadArmrDmg);
-                                }
-                                else if (pedHandle == PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitHeadArmrDmg);
-                                }
-                            }
-                            if (weapHeadMult >= 0)
-                            {
-                                if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - headArmrDmg);
-                                }
-                                else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - headArmrDmg);
-                                }
-                                else if (pedHandle != PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - initHeadArmrDmg);
-                                }
-                            }*/
-
                             if (pedHandle == PlayerHandle && dmgInit > 0 && newArmor <= 0)
                                 SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrHeadDmg));
 
