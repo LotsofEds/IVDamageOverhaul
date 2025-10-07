@@ -263,6 +263,18 @@ namespace ImprovedDamage.ivsdk
                 armorList.Add(initArmor);
             }
         }
+
+        private static bool DYHPasshole(int ped)
+        {
+            if (!NativeGame.IsScriptRunning("faustin2"))
+                return false;
+
+            GET_CHAR_MODEL(ped, out int pModel);
+            if (NativeGame.IsScriptRunning("faustin2") && pModel == GET_HASH_KEY("m_m_ee_heavy_01") && IS_PED_A_MISSION_PED(ped))
+                return true;
+            else
+                return false;
+        }
         private uint GetHeadMult(SettingsFile settings, int weap)
         {
             return (settings.GetUInteger(weap.ToString(), "PedHeadMult", 100));
@@ -725,8 +737,12 @@ namespace ImprovedDamage.ivsdk
                             }
                         }
                     }
-                    CLEAR_CHAR_LAST_WEAPON_DAMAGE(pedHandle);
-                    CLEAR_CHAR_LAST_DAMAGE_BONE(pedHandle);
+
+                    if (!DYHPasshole(pedHandle))
+                    {
+                        CLEAR_CHAR_LAST_WEAPON_DAMAGE(pedHandle);
+                        CLEAR_CHAR_LAST_DAMAGE_BONE(pedHandle);
+                    }
 
                     GET_CHAR_HEALTH(pedHandle, out newHealth);
                     GET_CHAR_ARMOUR(pedHandle, out newArmor);
