@@ -51,7 +51,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ArmoredAllies.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="PedHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

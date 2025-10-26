@@ -160,7 +160,6 @@ namespace ImprovedDamage.ivsdk
     {
         bool scriptActive = true;
         bool noHeadshots = false;
-        bool buffedFriends = false;
         private static int numOfWeapIDs;
         private static List<int> pedList = new List<int>();
         private static List<uint> healthList = new List<uint>();
@@ -196,8 +195,6 @@ namespace ImprovedDamage.ivsdk
             healthList.Clear();
             armorList.Clear();
             LoadINI(Settings);
-            if (buffedFriends)
-                ArmoredAllies.Init(Settings);
         }
         private void Main_KeyDown(object sender, KeyEventArgs e)
         {
@@ -218,9 +215,6 @@ namespace ImprovedDamage.ivsdk
             CleanLists();
             FillLists();
             CheckHealthArmor();
-
-            if (buffedFriends)
-                ArmoredAllies.Tick();
         }
         void CleanLists()
         {
@@ -344,7 +338,6 @@ namespace ImprovedDamage.ivsdk
             scriptRange = settings.GetFloat("MAIN", "scriptRange", 120);
             numOfWeapIDs = settings.GetInteger("MAIN", "NumOfWeaponIDs", 60);
             noHeadshots = settings.GetBoolean("MAIN", "NoHeadshots", false);
-            buffedFriends = settings.GetBoolean("MAIN", "BuffAllies", false);
 
             string NotWeap = settings.GetValue("WEAPON TYPES", "Exceptions", "");
             Exceptions.Clear();
@@ -432,7 +425,7 @@ namespace ImprovedDamage.ivsdk
                     }
                     if (newArmor > initArmor)
                     {
-                        armorList[pedList.IndexOf(myPed)] = newArmor; 
+                        armorList[pedList.IndexOf(myPed)] = newArmor;
                         initArmor = armorList[pedList.IndexOf(myPed)];
                     }
 
@@ -464,6 +457,11 @@ namespace ImprovedDamage.ivsdk
                             weapPlyrHandMult = GetPlyrHandFeetMult(Settings, i);
                             break;
                         }
+                    }
+                    foreach (eWeaponType weaponType in Exceptions)
+                    {
+                        if (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, (int)weaponType))
+                            goto reCheckHealth;
                     }
 
                     uint dmgInit = (initHealth - newHealth);
@@ -513,228 +511,221 @@ namespace ImprovedDamage.ivsdk
                     uint plyrHandArmrDmg = ((armrDmgInit * weapPlyrHandMult) / 100);
 
                     //IVGame.ShowSubtitleMessage(dmgInit.ToString() + "  " + initHealth.ToString() + "  " + newHealth.ToString() + "  " + armrDmgInit.ToString() + "  " + initArmor + "  " + newArmor.ToString());
-                    if (!HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 49) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 50) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 53) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 54) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 55) && !HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, 56))
+
+                    foreach (eWeaponType weaponType in Explosives)
                     {
-                        foreach (eWeaponType weaponType in Exceptions)
+                        if (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, (int)weaponType))
+                            boneHit = "ROOT";
+                    }
+                    foreach (eWeaponType weaponType in Shotties)
+                    {
+                        if (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, (int)weaponType) && boneHit != "HEAD")
+                            boneHit = "ROOT";
+                    }
+                    if (!IS_CHAR_DEAD(pedHandle) && boneHit == "HEAD")
+                    {
+                        if (pedHandle == PlayerHandle && dmgInit > 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrHeadDmg));
+
+                        else if (pedHandle == PlayerHandle && dmgInit <= 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitHeadDmg);
+
+                        else if (pedHandle != PlayerHandle && dmgInit > 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - headDmg));
+
+                        else if (pedHandle != PlayerHandle && dmgInit <= 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth - initHeadDmg);
+
+                        GET_CHAR_HEALTH(pedHandle, out newHealth);
+
+                        if (initArmor > 0)
                         {
-                            if (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, (int)weaponType))
-                                CLEAR_CHAR_LAST_DAMAGE_BONE(pedHandle);
-                        }
-                        foreach (eWeaponType weaponType in Explosives)
-                        {
-                            if (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, (int)weaponType))
-                                boneHit = "ROOT";
-                        }
-                        foreach (eWeaponType weaponType in Shotties)
-                        {
-                            if (HAS_CHAR_BEEN_DAMAGED_BY_WEAPON(pedHandle, (int)weaponType) && boneHit != "HEAD")
-                                boneHit = "ROOT";
-                        }
-                        if (!IS_CHAR_DEAD(pedHandle) && boneHit == "HEAD")
-                        {
-                            if (pedHandle == PlayerHandle && dmgInit > 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrHeadDmg));
-
-                            else if (pedHandle == PlayerHandle && dmgInit <= 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitHeadDmg);
-
-                            else if (pedHandle != PlayerHandle && dmgInit > 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - headDmg));
-
-                            else if (pedHandle != PlayerHandle && dmgInit <= 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth - initHeadDmg);
-
-                            GET_CHAR_HEALTH(pedHandle, out newHealth);
-
-                            if (initArmor > 0)
+                            if (pedHandle == PlayerHandle && armrDmgInit > 0)
                             {
-                                if (pedHandle == PlayerHandle && armrDmgInit > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - plyrHeadArmrDmg));
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - plyrHeadArmrDmg));
 
-                                    if ((plyrHeadArmrDmg - armrDmgInit) > newArmor)
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapPlyrHeadArmrPntMult) / 100) - (((plyrHeadArmrDmg - armrDmgInit - newArmor) * weapPlyrHeadMult) / 300));
-                                    else
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - ((plyrHeadArmrDmg * weapPlyrHeadArmrPntMult) / 100));
+                                if ((plyrHeadArmrDmg - armrDmgInit) > newArmor)
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapPlyrHeadArmrPntMult) / 100) - (((plyrHeadArmrDmg - armrDmgInit - newArmor) * weapPlyrHeadMult) / 300));
+                                else
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - ((plyrHeadArmrDmg * weapPlyrHeadArmrPntMult) / 100));
 
-                                    GET_CHAR_HEALTH(pedHandle, out newHealth);
-                                }
-                                else if (pedHandle == PlayerHandle && armrDmgInit < 1)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapPlyrHeadArmrMult - 100)) / 100)));
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapPlyrHeadArmrMult * weapPlyrHeadArmrPntMult)) / 10000));
-                                }
-                                else if (pedHandle != PlayerHandle && armrDmgInit > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - ((armrDmgInit * weapHeadArmrMult) / 100)));
+                                GET_CHAR_HEALTH(pedHandle, out newHealth);
+                            }
+                            else if (pedHandle == PlayerHandle && armrDmgInit < 1)
+                            {
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapPlyrHeadArmrMult - 100)) / 100)));
+                                SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapPlyrHeadArmrMult * weapPlyrHeadArmrPntMult)) / 10000));
+                            }
+                            else if (pedHandle != PlayerHandle && armrDmgInit > 0)
+                            {
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - ((armrDmgInit * weapHeadArmrMult) / 100)));
 
-                                    if ((headArmrDmg - armrDmgInit) > newArmor)
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapHeadArmrPntMult) / 100) - (((headArmrDmg - armrDmgInit - newArmor) * weapHeadMult) / 100));
-                                    else
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - ((headArmrDmg * weapHeadArmrPntMult) / 100));
+                                if ((headArmrDmg - armrDmgInit) > newArmor)
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapHeadArmrPntMult) / 100) - (((headArmrDmg - armrDmgInit - newArmor) * weapHeadMult) / 100));
+                                else
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - ((headArmrDmg * weapHeadArmrPntMult) / 100));
 
-                                    GET_CHAR_HEALTH(pedHandle, out newHealth);
-                                }
-                                else if (pedHandle != PlayerHandle && armrDmgInit < 1)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapHeadArmrMult - 100)) / 100)));
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapHeadArmrMult * weapHeadArmrPntMult)) / 10000));
-                                }
+                                GET_CHAR_HEALTH(pedHandle, out newHealth);
+                            }
+                            else if (pedHandle != PlayerHandle && armrDmgInit < 1)
+                            {
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapHeadArmrMult - 100)) / 100)));
+                                SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapHeadArmrMult * weapHeadArmrPntMult)) / 10000));
                             }
                         }
-                        else if (!IS_CHAR_DEAD(pedHandle) && (boneHit.Contains("SPINE") || boneHit.Contains("CLAVICLE") || boneHit == "ROOT"))
+                    }
+                    else if (!IS_CHAR_DEAD(pedHandle) && (boneHit.Contains("SPINE") || boneHit.Contains("CLAVICLE") || boneHit == "ROOT"))
+                    {
+                        if (pedHandle == PlayerHandle && dmgInit > 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrBodyDmg));
+
+                        else if (pedHandle == PlayerHandle && dmgInit <= 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitBodyDmg);
+
+                        else if (pedHandle != PlayerHandle && dmgInit > 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - bodyDmg));
+
+                        else if (pedHandle != PlayerHandle && dmgInit <= 0 && newArmor <= 0)
+                            SET_CHAR_HEALTH(pedHandle, newHealth - initBodyDmg);
+
+                        GET_CHAR_HEALTH(pedHandle, out newHealth);
+
+                        if (initArmor > 0)
                         {
-                            if (pedHandle == PlayerHandle && dmgInit > 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrBodyDmg));
-
-                            else if (pedHandle == PlayerHandle && dmgInit <= 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitBodyDmg);
-
-                            else if (pedHandle != PlayerHandle && dmgInit > 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - bodyDmg));
-
-                            else if (pedHandle != PlayerHandle && dmgInit <= 0 && newArmor <= 0)
-                                SET_CHAR_HEALTH(pedHandle, newHealth - initBodyDmg);
-
-                            GET_CHAR_HEALTH(pedHandle, out newHealth);
-                            
-                            if (initArmor > 0)
+                            if (pedHandle == PlayerHandle && armrDmgInit > 0)
                             {
-                                if (pedHandle == PlayerHandle && armrDmgInit > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - plyrArmrDmg));
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - plyrArmrDmg));
 
-                                    if ((plyrArmrDmg - armrDmgInit) > newArmor)
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapPlyrArmrPntMult) / 100) - (((plyrArmrDmg - armrDmgInit - newArmor) * weapPlyrBodyMult) / 300));
-                                    else
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - ((plyrArmrDmg * weapPlyrArmrPntMult) / 100));
+                                if ((plyrArmrDmg - armrDmgInit) > newArmor)
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapPlyrArmrPntMult) / 100) - (((plyrArmrDmg - armrDmgInit - newArmor) * weapPlyrBodyMult) / 300));
+                                else
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - ((plyrArmrDmg * weapPlyrArmrPntMult) / 100));
 
-                                    GET_CHAR_HEALTH(pedHandle, out newHealth);
-                                }
-                                else if (pedHandle == PlayerHandle && armrDmgInit < 1)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapPlyrArmrMult - 100)) / 100)));
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapPlyrArmrMult * weapPlyrArmrPntMult)) / 10000));
-                                }
-                                else if (pedHandle != PlayerHandle && armrDmgInit > 0)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - ((armrDmgInit * weapArmrMult) / 100)));
+                                GET_CHAR_HEALTH(pedHandle, out newHealth);
+                            }
+                            else if (pedHandle == PlayerHandle && armrDmgInit < 1)
+                            {
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapPlyrArmrMult - 100)) / 100)));
+                                SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapPlyrArmrMult * weapPlyrArmrPntMult)) / 10000));
+                            }
+                            else if (pedHandle != PlayerHandle && armrDmgInit > 0)
+                            {
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(armrDmgInit - ((armrDmgInit * weapArmrMult) / 100)));
 
-                                    if ((armrDmg - armrDmgInit) > newArmor)
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapArmrPntMult) / 100) - (((armrDmg - armrDmgInit - newArmor) * weapBodyMult) / 100));
-                                    else
-                                        SET_CHAR_HEALTH(pedHandle, newHealth - ((armrDmg * weapArmrPntMult) / 100));
+                                if ((armrDmg - armrDmgInit) > newArmor)
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((newArmor + armrDmgInit) * weapArmrPntMult) / 100) - (((armrDmg - armrDmgInit - newArmor) * weapBodyMult) / 100));
+                                else
+                                    SET_CHAR_HEALTH(pedHandle, newHealth - ((armrDmg * weapArmrPntMult) / 100));
 
-                                    GET_CHAR_HEALTH(pedHandle, out newHealth);
-                                }
-                                else if (pedHandle != PlayerHandle && armrDmgInit < 1)
-                                {
-                                    ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapArmrMult - 100)) / 100)));
-                                    SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapArmrMult * weapArmrPntMult)) / 10000));
-                                }
+                                GET_CHAR_HEALTH(pedHandle, out newHealth);
+                            }
+                            else if (pedHandle != PlayerHandle && armrDmgInit < 1)
+                            {
+                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(0 - (((100 - newArmor) * (weapArmrMult - 100)) / 100)));
+                                SET_CHAR_HEALTH(pedHandle, newHealth - (((100 - newArmor) * (weapArmrMult * weapArmrPntMult)) / 10000));
                             }
                         }
-                        else if (!IS_CHAR_DEAD(pedHandle) && (boneHit.Contains("THIGH") || boneHit.Contains("CALF") || boneHit.Contains("ARM")))
+                    }
+                    else if (!IS_CHAR_DEAD(pedHandle) && (boneHit.Contains("THIGH") || boneHit.Contains("CALF") || boneHit.Contains("ARM")))
+                    {
+                        if (pedHandle == PlayerHandle && dmgInit > 1 && newArmor <= 0)
                         {
-                            if (pedHandle == PlayerHandle && dmgInit > 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrLimbDmg));
-                            }
-                            else if (pedHandle == PlayerHandle && dmgInit <= 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, (newHealth - plyrInitLimbDmg));
-                            }
-                            else if (pedHandle != PlayerHandle && dmgInit > 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - limbDmg));
-                            }
-                            else if (pedHandle != PlayerHandle && dmgInit <= 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, (newHealth - initLimbDmg));
-                            }
-                            GET_CHAR_HEALTH(pedHandle, out newHealth);
-
-                            if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrLimbArmrDmg);
-                            }
-                            else if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrLimbArmrDmg);
-                            }
-                            else if (pedHandle == PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitLimbArmrDmg);
-                            }
-                            else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - limbArmrDmg);
-                            }
-                            else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - limbArmrDmg);
-                            }
-                            else if (pedHandle != PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
-                                SET_CHAR_HEALTH(pedHandle, newHealth - initLimbArmrDmg);
-                            }
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrLimbDmg));
                         }
-                        else if (!IS_CHAR_DEAD(pedHandle) && (boneHit.Contains("HAND") || boneHit.Contains("FOOT") || boneHit.Contains("TOE") || boneHit.Contains("FINGER")))
+                        else if (pedHandle == PlayerHandle && dmgInit <= 1 && newArmor <= 0)
                         {
-                            if (pedHandle == PlayerHandle && dmgInit > 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrHandDmg));
-                            }
-                            else if (pedHandle == PlayerHandle && dmgInit <= 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, (newHealth - plyrInitHandDmg));
-                            }
-                            else if (pedHandle != PlayerHandle && dmgInit > 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - handDmg));
-                            }
-                            else if (pedHandle != PlayerHandle && dmgInit <= 1 && newArmor <= 0)
-                            {
-                                SET_CHAR_HEALTH(pedHandle, (newHealth - initHandDmg));
-                            }
-                            GET_CHAR_HEALTH(pedHandle, out newHealth);
+                            SET_CHAR_HEALTH(pedHandle, (newHealth - plyrInitLimbDmg));
+                        }
+                        else if (pedHandle != PlayerHandle && dmgInit > 1 && newArmor <= 0)
+                        {
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - limbDmg));
+                        }
+                        else if (pedHandle != PlayerHandle && dmgInit <= 1 && newArmor <= 0)
+                        {
+                            SET_CHAR_HEALTH(pedHandle, (newHealth - initLimbDmg));
+                        }
+                        GET_CHAR_HEALTH(pedHandle, out newHealth);
 
-                            if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrHandArmrDmg);
-                            }
-                            else if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrHandArmrDmg);
-                            }
-                            else if (pedHandle == PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
-                                SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitHandArmrDmg);
-                            }
-                            else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - handArmrDmg);
-                            }
-                            else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
-                                SET_CHAR_HEALTH(pedHandle, newHealth - handArmrDmg);
-                            }
-                            else if (pedHandle != PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
-                            {
-                                ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
-                                SET_CHAR_HEALTH(pedHandle, newHealth - initHandArmrDmg);
-                            }
+                        if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrLimbArmrDmg);
+                        }
+                        else if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrLimbArmrDmg);
+                        }
+                        else if (pedHandle == PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitLimbArmrDmg);
+                        }
+                        else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - limbArmrDmg);
+                        }
+                        else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - limbArmrDmg);
+                        }
+                        else if (pedHandle != PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
+                            SET_CHAR_HEALTH(pedHandle, newHealth - initLimbArmrDmg);
+                        }
+                    }
+                    else if (!IS_CHAR_DEAD(pedHandle) && (boneHit.Contains("HAND") || boneHit.Contains("FOOT") || boneHit.Contains("TOE") || boneHit.Contains("FINGER")))
+                    {
+                        if (pedHandle == PlayerHandle && dmgInit > 1 && newArmor <= 0)
+                        {
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - plyrHandDmg));
+                        }
+                        else if (pedHandle == PlayerHandle && dmgInit <= 1 && newArmor <= 0)
+                        {
+                            SET_CHAR_HEALTH(pedHandle, (newHealth - plyrInitHandDmg));
+                        }
+                        else if (pedHandle != PlayerHandle && dmgInit > 1 && newArmor <= 0)
+                        {
+                            SET_CHAR_HEALTH(pedHandle, newHealth + (dmgInit - handDmg));
+                        }
+                        else if (pedHandle != PlayerHandle && dmgInit <= 1 && newArmor <= 0)
+                        {
+                            SET_CHAR_HEALTH(pedHandle, (newHealth - initHandDmg));
+                        }
+                        GET_CHAR_HEALTH(pedHandle, out newHealth);
+
+                        if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrHandArmrDmg);
+                        }
+                        else if (pedHandle == PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrHandArmrDmg);
+                        }
+                        else if (pedHandle == PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
+                            SET_CHAR_HEALTH(pedHandle, newHealth - plyrInitHandArmrDmg);
+                        }
+                        else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - handArmrDmg);
+                        }
+                        else if (pedHandle != PlayerHandle && armrDmgInit > 1 && newArmor <= 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)armrDmgInit);
+                            SET_CHAR_HEALTH(pedHandle, newHealth - handArmrDmg);
+                        }
+                        else if (pedHandle != PlayerHandle && armrDmgInit <= 1 && newArmor > 0)
+                        {
+                            ADD_ARMOUR_TO_CHAR(pedHandle, (int)(100 - newArmor));
+                            SET_CHAR_HEALTH(pedHandle, newHealth - initHandArmrDmg);
                         }
                     }
 
@@ -744,6 +735,7 @@ namespace ImprovedDamage.ivsdk
                         CLEAR_CHAR_LAST_DAMAGE_BONE(pedHandle);
                     }
 
+                reCheckHealth:
                     GET_CHAR_HEALTH(pedHandle, out newHealth);
                     GET_CHAR_ARMOUR(pedHandle, out newArmor);
 
